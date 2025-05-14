@@ -4,69 +4,31 @@ import json
 import pandas
 from datetime import datetime
 import matplotlib.pyplot as plt
-# Сбор данных улиц по карте https://www.openstreetmap.org/#map=3/69.62/-74.90
+
 # Константы
 current_date_str = datetime.now().strftime('%Y-%m-%d-%M-%H')
-# Значения для районов
-disct={"Октябрьский": 215, "Кировский": 213}
-# Поиск новых ЖК
-def new_dev ():
-    nsk_parser = cianparser.CianParser(location="Новосибирск")
-    data = nsk_parser.get_newobjects(with_saving_csv=True)
-    #преобразовываем в excel и сохраняем всю информацию
-    # current_date_str = datetime.now().strftime('%Y-%m-%d-%H-%M')
-    name_of_file=f"new_object_{current_date_str}"
-    df=pd.DataFrame(data)
-    df.to_excel(f"./result/{name_of_file}.xlsx") 
 
-
-# Парсинг квартир
 def all_flar_search():
     # Значения поиска по умолчанию
-    Search_value_default={"Количество комнат": [1,2,3,4,"all"], "Только квартиры" : True, 
+    Search_value_default={"Количество комнат": "all", "Только квартиры" : True, 
             "Аппартаменты" :False, "Минимальный год постройки" : "2024", "Первая страница поиска" :1,
-            "Последняя страница поиска" : 20, "Минимальная цена" : 0, "Максимальная цена": 30000000,
-            "Тип жилья":"secondary " , 'Район' : ''}    
+            "Последняя страница поиска" : 20, "Минимальная цена" : 0, "Максимальная цена": 30000000
+            }    
     # Словарь для перевода слов из файла ввода данных
-    dictionary = {
-    "secondary ": ["Вторичка", 'вторичка']
-    ,'new': ['Новостройка ', 'Новые', 'новостройка'],
-    "all": ['все', 'Все'], 
-    True: ['да', 'Да'], 
-    False: ['нет', 'Нет'],
-    215 : ['Октябрьский', 'октябрьский'],
-    213 : ['кировский', 'Кировский'],
-    209 : ['Дзержинский', 'дзержинский'],
-    210 : ['железнодорожный', 'Железнодорожный'],
-    211 : ['Заельцовский', 'заельцовский' ],
-    214 : ['ленинский', 'Ленинский']}
-    input=pd.read_excel('./date/Input.xlsx')
-    input.dropna(inplace=True)
-    # Читаем и заполняем введенные данные в параметры поиска
-    for option, value in zip(input['Option'], input['Value']):
-        for key, synonyms in dictionary.items():
-            if str(value).strip() in synonyms:  # Учитываем возможные пробелы и регистр
-                Search_value_default[option] = key
-                break
-        else:
-            # Если значение не найдено, сохраняем исходное (или можно вызвать ошибку)
-            Search_value_default[option] = value
-    print("\nОбновленные значения:")
-    for key, value in Search_value_default.items():
-        print(f"{key}: {value}")
+    
     # Грузим файл, проверяем его значения, если не пусто то вставляем key+value, если значение none берём кей и валуе из дефалта
     nsk_parser = cianparser.CianParser(location="Новосибирск")
     data = nsk_parser.get_flats( deal_type="sale", 
-                                rooms=Search_value_default["Количество комнат"], with_saving_csv=True, 
+                                rooms=Search_value_default["Количество комнат"], with_saving_csv=True,
                                 additional_settings = {"only_flat": Search_value_default['Только квартиры'], 
                                                     "only_apartment":Search_value_default['Аппартаменты'],
                                                         "min_house_year": Search_value_default['Минимальный год постройки'],
                                                             "start_page":Search_value_default['Первая страница поиска'],
                                                             "end_page": Search_value_default['Последняя страница поиска'],
-                                                            "object_type":"secondary", "residential_complex": "VIRA",
+                                                            "object_type":"new", 
                                                                 "min_price": Search_value_default['Минимальная цена'],
-                                                                "max_price": Search_value_default['Максимальная цена'] , 
-                                                                "district" : Search_value_default['Район']} ,  with_extra_data=True)
+                                                                "max_price": Search_value_default['Максимальная цена'] ,
+                                                                "metro": "Октябрьский"} ,  with_extra_data=True)
 
      #преобразовываем в excel и сохраняем всю информацию
     df=pd.DataFrame(data)

@@ -9,14 +9,27 @@ import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import time
+import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
+session = requests.Session()
+retries = Retry(total=3, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+session.mount("https://", HTTPAdapter(max_retries=retries))
+
+try:
+    response = session.get("https://example.com", timeout=10)
+    print(response.text)
+except requests.exceptions.Timeout:
+    print("The request timed out after multiple attempts")
+    
 def normalize_url(url):
     parsed = urlparse(url)
     # Убираем параметры и якоря
     cleaned = parsed._replace(query='', fragment='')
     return urlunparse(cleaned).lower().rstrip('/')
 
-def get_search_results(query, num_results=3):
+def get_search_results(query, num_results=9):
     return [result for result in search(query, num_results=num_results)]
 
 
@@ -62,7 +75,7 @@ def main():
         processed_urls[developer] = set()
         search_queries = [f"{developer} {keyword} " for keyword in keywords ]
         print(search_queries)
-        breakpoint()
+        
         for query in search_queries:
             try:
                 search_results = get_search_results(query)
