@@ -40,17 +40,57 @@ def all_flar_search():
     210 : ['железнодорожный', 'Железнодорожный'],
     211 : ['Заельцовский', 'заельцовский' ],
     214 : ['ленинский', 'Ленинский']}
-    input=pd.read_excel('./date/Input.xlsx')
-    input.dropna(inplace=True)
-    # Читаем и заполняем введенные данные в параметры поиска
-    for option, value in zip(input['Option'], input['Value']):
-        for key, synonyms in dictionary.items():
-            if str(value).strip() in synonyms:  # Учитываем возможные пробелы и регистр
-                Search_value_default[option] = key
+
+# --- Чтение из Excel (раскомментируйте, если нужен ввод из файла) ---
+# try:
+#     input_df = pd.read_excel('./date/Input.xlsx')
+#     input_df.dropna(inplace=True)
+#     for option, value in zip(input_df['Option'], input_df['Value']):
+#         mapped = None
+#         for key, synonyms in dictionary.items():
+#             if str(value).strip().lower() in [s.lower() for s in synonyms]:
+#                 mapped = key
+#                 break
+#         Search_value_default[option] = mapped if mapped is not None else value
+# except FileNotFoundError:
+#     print("Файл с вводом не найден, пропускаем.")
+
+# --- Ввод с клавиатуры ---
+    for key in Search_value_default:
+        while True:
+            current_value = Search_value_default[key]
+            prompt = f"Введите значение для параметра '{key}' (текущее: {current_value}): "
+            user_input = input(prompt).strip()
+
+            # Если пустой ввод - оставляем текущее значение
+            if user_input == "":
                 break
-        else:
-            # Если значение не найдено, сохраняем исходное (или можно вызвать ошибку)
-            Search_value_default[option] = value
+
+            # Обработка специальных случаев
+            if key == "Количество комнат":
+                if user_input.lower() in ["1", "2", "3", "4", "all"]:
+                    Search_value_default[key] = user_input if user_input == "all" else int(user_input)
+                    break
+                else:
+                    print("Ошибка: допустимые значения - 1, 2, 3, 4 или all")
+            elif key in ["Только квартиры", "Аппартаменты"]:
+                if user_input.lower() in ["true", "false"]:
+                    Search_value_default[key] = user_input.lower() == "true"
+                    break
+                else:
+                    print("Ошибка: введите 'true' или 'false'")
+            elif key in ["Первая страница поиска", "Последняя страница поиска"]:
+                if user_input.lower() and int(user_input) in range(1, 101):
+                    Search_value_default[key] = int(user_input)
+                    break
+                else:
+                    print("Ошибка: введите 'true' или 'false'")
+
+            else:
+                # Для остальных параметров - просто сохраняем введённое значение
+                Search_value_default[key] = user_input
+                break
+
     print("\nОбновленные значения:")
     for key, value in Search_value_default.items():
         print(f"{key}: {value}")
