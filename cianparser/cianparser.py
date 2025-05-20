@@ -2,7 +2,7 @@ import cloudscraper
 import time
 
 from cianparser.constants import CITIES, METRO_STATIONS, DEAL_TYPES, OBJECT_SUBURBAN_TYPES
-from cianparser.url_builder import URLBuilder
+from cianparser.url_builder import URLBuilder, NSKParser
 from cianparser.proxy_pool import ProxyPool
 from cianparser.flat.list import FlatListPageParser
 from cianparser.suburban.list import SuburbanListPageParser

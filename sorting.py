@@ -1,5 +1,4 @@
 import  pandas as pd
-import pandas
 import matplotlib.pyplot as plt
 from datetime import datetime
 import os
@@ -41,10 +40,28 @@ def files():
         print("Ошибка: Введите корректный номер.")
         return None
 
-def sorting():
-    name_file=files()
-    df=pd.read_excel(f"./result/{name_file}")
-    # dev_sorting = (
+def sorting(file_path=None, filter_streets=None):
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from fuzzywuzzy import fuzz
+    import os
+
+    if file_path is None:
+        name_file = files()
+        file_path = f"./result/{name_file}"
+
+    df = pd.read_excel(file_path)
+
+    # Фильтрация по улицам
+    if filter_streets:
+        street_list = [s.strip().lower() for s in filter_streets.split(",") if s.strip()]
+        street_col = None
+        for col in df.columns:
+            if col.lower() in ['street', 'улица']:
+                street_col = col
+                break
+        if street_col:
+            df = df[df[street_col].str.lower().isin(street_list)]
     #     df.groupby(['residential_complex', 'rooms_count'])
     #     .agg(mean_price=('price_metr', 'mean'))
     #     .sort_values(by=['mean_price'])
@@ -107,7 +124,6 @@ def sorting():
         print("Ошибка: Введите корректные данные.")        
 
         # Построение графиков для фильтрованных данных
-        
         # Выборка очередной группы
         chunk = filtered_data
         # Построение графика
@@ -121,6 +137,9 @@ def sorting():
         # Сохранение графика
         output_file = f'./result/output_plot_group{developers_input}.png'
         plt.savefig(output_file, dpi=300, bbox_inches='tight')
-
+    filtered_file = file_path.replace('.xlsx', '_filtered.xlsx')
+    df.to_excel(filtered_file, index=False)
+    return filtered_file
+    
         # Закрытие графика
         

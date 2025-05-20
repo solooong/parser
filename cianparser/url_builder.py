@@ -121,3 +121,22 @@ class URLBuilder:
                 self.url += SORT_BY_CREATION_DATA_FROM_NEWER_TO_OLDER_PATH
             if additional_settings["sort_by"] == IS_SORT_BY_CREATION_DATA_FROM_OLDER_TO_NEWER_PATH:
                 self.url += SORT_BY_CREATION_DATA_FROM_OLDER_TO_NEWER_PATH
+
+class NSKParser:
+    def __init__(self):
+        self.final_url = None  # Атрибут для хранения финального URL
+
+    def get_url(self, url, with_extra_data=False):
+        # Здесь логика формирования финального URL
+        # Например, добавляем параметры к url
+        params = {"extra": "1"} if with_extra_data else {}
+        from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
+
+        parsed_url = urlparse(url)
+        query = dict(parse_qsl(parsed_url.query))
+        query.update(params)
+        new_query = urlencode(query, doseq=True)
+        final_url = urlunparse(parsed_url._replace(query=new_query))
+        self.final_url = final_url  # Сохраняем финальный URL в атрибуте
+        # Возвращаем результат парсинга (пример)
+        return {"data": "parsed_data", "url": final_url}

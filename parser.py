@@ -19,6 +19,42 @@ def new_dev ():
     df=pd.DataFrame(data)
     df.to_excel(f"./result/{name_of_file}.xlsx") 
 
+def mysearch():
+    nsk_parser = NSKParser()
+    url_of_user = "https://example.com/path?foo=bar"
+    data = nsk_parser.get_url(url=url_of_user, with_extra_data=True)
+    print(nsk_parser.final_url)  # Здесь будет финальный URL
+
+def all_flat_search_gui(params):
+    current_date_str = datetime.now().strftime('%Y-%m-%d-%M-%H')
+    nsk_parser = cianparser.CianParser(location="Новосибирск")
+    data = nsk_parser.get_flats(
+        deal_type="sale",
+        rooms=params.get("rooms"),
+        with_saving_csv=True,
+        additional_settings={
+            "only_flat": params.get("only_flat"),
+            "only_apartment": params.get("only_apartment"),
+            "min_house_year": params.get("min_house_year"),
+            "start_page": params.get("start_page"),
+            "end_page": params.get("end_page"),
+            "object_type": params.get("object_type"),
+            "min_price": params.get("min_price"),
+            "max_price": params.get("max_price"),
+            "district": params.get("district"),
+            "house_material_type": params.get("house_material_type"),
+            "metro": params.get("metro"),
+            "metro_station": params.get("metro_station"),
+            "metro_foot_minute": params.get("metro_foot_minute"),
+            "is_by_homeowner": params.get("is_by_homeowner"),
+            "flat_share": params.get("flat_share"),
+            "sort_by": params.get("sort_by"),
+        },
+        with_extra_data=True
+    )
+    df = pd.DataFrame(data)
+    df.to_excel(f"./result/all_flat_result_{current_date_str}.xlsx")
+    return f"./result/all_flat_result_{current_date_str}.xlsx"
 
 # Парсинг квартир
 def all_flar_search():
