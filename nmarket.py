@@ -14,7 +14,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import time
-
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
 # === Константы по умолчанию ===
 LOGIN = "laguta@nian.tv"
 PASSWORD = "614084"
@@ -246,31 +246,48 @@ def main():
                     if not df.empty:
                         all_data = pd.concat([all_data, df], ignore_index=True)
 
+                    # Обновление интерфейса
                     root.after(100, update_progress, min(100, int(page_counter * (100 / max_pages))))
                     root.after(100, lambda p=page_counter: current_page_label.config(text=f"Текущая страница: {p}"))
 
+                    # Промежуточное сохранение
                     if page_counter % 5 == 0:
                         temp_filename = os.path.join("data", f"flats_page_{page_counter}.xlsx")
                         save_to_excel_with_images(all_data, filename=temp_filename)
-                        print(f"💾 Промежуточное сохранение: страница {page_counter}")
 
                     if page_counter >= max_pages:
                         print("🛑 Достигнут лимит страниц.")
                         break
 
-                    current_url = increment_page_number(current_url)
-                    print(f"➡️ Переход на: {current_url}")
-                    driver.get(current_url)
-
+                    # Логика перехода на следующую страницу
                     try:
-                        WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, ".apartment-grid__table-tbody"))
+                        # Получаем текущий номер активной страницы
+                        current_page_element = driver.find_element(By.CSS_SELECTOR, '.pagination__active')
+                        current_page = int(current_page_element.text.strip())
+
+                        # Ищем кнопку "Далее"
+                        next_button = WebDriverWait(driver, 15).until(
+                            EC.element_to_be_clickable((By.CSS_SELECTOR, '.pagination__next-button'))
                         )
+                        driver.execute_script("arguments[0].click();", next_button)
+
+                        # Ожидаем обновления номера страницы
+                        WebDriverWait(driver, 15).until(
+                            lambda d: int(d.find_element(By.CSS_SELECTOR, '.pagination__active').text.strip()) > current_page
+                        )
+
+                        # Успешный переход
                         page_counter += 1
-                    except:
-                        print("🔚 Больше нет страниц.")
+                        print(f"✅ Успешно перешли на страницу {page_counter}")
+
+                    except TimeoutException:
+                        print("🔚 Достигнута последняя страница")
+                        break
+                    except Exception as e:
+                        print(f"❌ Ошибка перехода: {str(e)}")
                         break
 
+                # Финализация данных
                 sorting_df = merge_new_data(all_data)
                 save_to_excel_with_images(sorting_df)
                 save_history(entry_url.get())
