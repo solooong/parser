@@ -143,3 +143,4 @@ def sorting(file_path=None, filter_streets=None):
     
         # Закрытие графика
         
+main()

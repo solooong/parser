@@ -1,277 +1,268 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-# Импортируем ваши модули
-import parser
-import sorting
-import search
+import threading
+import sys
+import os
 
-# --- Справочники для выпадающих списков ---
-districts = {
-    215: 'Октябрьский',
-    213: 'Кировский',
-    209: 'Дзержинский',
-    210: 'Железнодорожный',
-    211: 'Заельцовский',
-    214: 'Ленинский'
-}
-house_material_types = [
-    "панельный", "кирпичный", "монолитный", "блочный", "деревянный", "другое"
-]
-sort_by_options = [
-    "price_asc", "price_desc", "date_asc", "date_desc"
-]
+# Убедиться, что final.py находится в той же папке
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-class RealtyParserGUI(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Realty Parser & Analyzer")
-        self.geometry("800x700")
-        self.resizable(False, False)
+try:
+    from final import new_dev, all_flar_search_gui, sorting, searchhh
+except ImportError as e:
+    messagebox.showerror("Ошибка импорта", f"Не удалось загрузить final.py:\n{e}")
+    raise
 
-        self.selected_action = tk.StringVar(value="parse")
-        self.search_type = tk.StringVar(value="new")
-        self.selected_file = tk.StringVar()
-        self.metro_var = tk.StringVar()
-        self.metro_station_var = tk.StringVar()
-        self.district_var = tk.StringVar()
-        self.house_material_var = tk.StringVar()
-        self.sort_by_var = tk.StringVar()
-        self.only_homeowner = tk.BooleanVar()
-        self.have_loggia = tk.BooleanVar()
-        self.only_flat = tk.BooleanVar()
-        self.only_apartment = tk.BooleanVar()
-        self.flat_share = tk.StringVar()
-        self.filter_streets = tk.StringVar()
-        self.city_var = tk.StringVar()
-        self.search_jk_var = tk.StringVar()
+class RedirectText:
+    def __init__(self, text_widget):
+        self.text_space = text_widget
 
-        self.init_widgets()
+    def write(self, string):
+        self.text_space.config(state=tk.NORMAL)
+        self.text_space.insert(tk.END, string)
+        self.text_space.see(tk.END)
+        self.text_space.config(state=tk.DISABLED)
 
-    def init_widgets(self):
-        # --- Выбор действия ---
-        frame_action = ttk.LabelFrame(self, text="Выберите действие")
-        frame_action.pack(fill="x", padx=10, pady=5)
+    def flush(self):
+        pass
 
-        actions = [("Парсинг объявлений", "parse"),
-                   ("Обработка данных (группировка)", "group"),
-                   ("Поиск маркетинговых активностей", "search")]
-        for text, val in actions:
-            ttk.Radiobutton(frame_action, text=text, variable=self.selected_action, value=val, command=self.update_action).pack(side="left", padx=10)
+class ParserGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Парсер недвижимости")
+        self.root.geometry("800x600")
 
-        self.frame_parse = ttk.Frame(self)
-        self.frame_group = ttk.Frame(self)
-        self.frame_search = ttk.Frame(self)
+        # Лог-вывод
+        self.log_text = tk.Text(root, wrap='word', state='disabled', height=20)
+        self.log_text.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
-        self.frame_parse.pack(fill="x", padx=10, pady=5)
-        self.update_action()
+        sys.stdout = RedirectText(self.log_text)
 
-    def update_action(self):
-        for frame in [self.frame_parse, self.frame_group, self.frame_search]:
-            frame.pack_forget()
+        # Контейнер для кнопок
+        self.btn_frame = tk.Frame(root)
+        self.btn_frame.pack(pady=10)
 
-        if self.selected_action.get() == "parse":
-            self.show_parse()
-        elif self.selected_action.get() == "group":
-            self.show_group()
-        elif self.selected_action.get() == "search":
-            self.show_search()
+        # Кнопки действий
+        self.btn_new_dev = tk.Button(self.btn_frame, text="1. Парсинг новостроек", width=25, command=self.run_new_dev)
+        self.btn_new_dev.pack(side=tk.LEFT, padx=5)
 
-    def show_parse(self):
-        frame = self.frame_parse
-        for widget in frame.winfo_children():
-            widget.destroy()
+        self.btn_flat_search = tk.Button(self.btn_frame, text="2. Поиск квартир", width=25, command=self.open_flat_search_form)
+        self.btn_flat_search.pack(side=tk.LEFT, padx=5)
 
-        # --- Тип поиска ---
-        ttk.Label(frame, text="Тип поиска:").grid(row=0, column=0, sticky="w")
-        ttk.Radiobutton(frame, text="Поиск по новостройкам", variable=self.search_type, value="new").grid(row=0, column=1, sticky="w")
-        ttk.Radiobutton(frame, text="Поиск квартир по параметрам", variable=self.search_type, value="params").grid(row=0, column=2, sticky="w")
+        self.btn_sorting = tk.Button(self.btn_frame, text="3. Анализ данных", width=25, command=self.open_sorting_form)
+        self.btn_sorting.pack(side=tk.LEFT, padx=5)
 
-        row = 1
-        ttk.Label(frame, text="Тип жилья:").grid(row=row, column=0, sticky="w")
-        self.object_type_entry = ttk.Combobox(frame, values=["new", "secondary"], state="readonly")
-        self.object_type_entry.current(0)
-        self.object_type_entry.grid(row=row, column=1, sticky="w")
+        self.btn_marketing = tk.Button(self.btn_frame, text="4. Маркетинг", width=25, command=self.open_marketing_form)
+        self.btn_marketing.pack(side=tk.LEFT, padx=5)
 
-        row += 1
-        ttk.Label(frame, text="Первая страница:").grid(row=row, column=0, sticky="w")
-        self.start_page_entry = ttk.Entry(frame)
-        self.start_page_entry.insert(0, "1")
-        self.start_page_entry.grid(row=row, column=1, sticky="w")
+        # Кнопка СТОП
+        self.stop_button = tk.Button(self.btn_frame, text="СТОП", width=15, command=self.stop_task, state=tk.DISABLED)
+        self.stop_button.pack(side=tk.LEFT, padx=5)
 
-        ttk.Label(frame, text="Последняя страница:").grid(row=row, column=2, sticky="w")
-        self.end_page_entry = ttk.Entry(frame)
-        self.end_page_entry.insert(0, "20")
-        self.end_page_entry.grid(row=row, column=3, sticky="w")
+        # Статус выполнения
+        self.status_label = tk.Label(root, text="Ожидание запуска", fg="green")
+        self.status_label.pack(pady=10)
 
-        row += 1
-        ttk.Checkbutton(frame, text="Только собственники", variable=self.only_homeowner).grid(row=row, column=0, sticky="w")
-        ttk.Label(frame, text="Цена от:").grid(row=row, column=1, sticky="w")
-        self.min_price_entry = ttk.Entry(frame)
-        self.min_price_entry.insert(0, "0")
-        self.min_price_entry.grid(row=row, column=2, sticky="w")
-        ttk.Label(frame, text="до:").grid(row=row, column=3, sticky="w")
-        self.max_price_entry = ttk.Entry(frame)
-        self.max_price_entry.insert(0, "30000000")
-        self.max_price_entry.grid(row=row, column=4, sticky="w")
+        self.stop_event = None
 
-        row += 1
-        ttk.Label(frame, text="Балконов от:").grid(row=row, column=0, sticky="w")
-        self.min_balconies_entry = ttk.Entry(frame)
-        self.min_balconies_entry.grid(row=row, column=1, sticky="w")
-        ttk.Checkbutton(frame, text="Лоджия", variable=self.have_loggia).grid(row=row, column=2, sticky="w")
+    def run_in_thread(self, func, *args):
+        self.stop_event = threading.Event()
+        self.stop_button.config(state=tk.NORMAL)
+        self.status_label.config(text="Выполняется...")
 
-        row += 1
-        ttk.Label(frame, text="Год постройки от:").grid(row=row, column=0, sticky="w")
-        self.min_house_year_entry = ttk.Entry(frame)
-        self.min_house_year_entry.grid(row=row, column=1, sticky="w")
-        ttk.Label(frame, text="до:").grid(row=row, column=2, sticky="w")
-        self.max_house_year_entry = ttk.Entry(frame)
-        self.max_house_year_entry.grid(row=row, column=3, sticky="w")
-
-        row += 1
-        ttk.Label(frame, text="Этаж от:").grid(row=row, column=0, sticky="w")
-        self.min_floor_entry = ttk.Entry(frame)
-        self.min_floor_entry.grid(row=row, column=1, sticky="w")
-        ttk.Label(frame, text="до:").grid(row=row, column=2, sticky="w")
-        self.max_floor_entry = ttk.Entry(frame)
-        self.max_floor_entry.grid(row=row, column=3, sticky="w")
-
-        row += 1
-        ttk.Label(frame, text="Этажей в доме от:").grid(row=row, column=0, sticky="w")
-        self.min_total_floor_entry = ttk.Entry(frame)
-        self.min_total_floor_entry.grid(row=row, column=1, sticky="w")
-        ttk.Label(frame, text="до:").grid(row=row, column=2, sticky="w")
-        self.max_total_floor_entry = ttk.Entry(frame)
-        self.max_total_floor_entry.grid(row=row, column=3, sticky="w")
-
-        row += 1
-        ttk.Label(frame, text="Тип дома:").grid(row=row, column=0, sticky="w")
-        self.house_material_combo = ttk.Combobox(frame, values=house_material_types, state="readonly")
-        self.house_material_combo.grid(row=row, column=1, sticky="w")
-
-        ttk.Label(frame, text="Район:").grid(row=row, column=2, sticky="w")
-        self.district_combo = ttk.Combobox(frame, values=list(districts.values()), state="readonly")
-        self.district_combo.grid(row=row, column=3, sticky="w")
-
-        row += 1
-        ttk.Label(frame, text="Станция метро:").grid(row=row, column=0, sticky="w")
-        self.metro_station_entry = ttk.Entry(frame)
-        self.metro_station_entry.grid(row=row, column=1, sticky="w")
-        ttk.Label(frame, text="До метро пешком (мин):").grid(row=row, column=2, sticky="w")
-        self.metro_foot_minute_entry = ttk.Entry(frame)
-        self.metro_foot_minute_entry.grid(row=row, column=3, sticky="w")
-
-        row += 1
-        ttk.Label(frame, text="Только доли:").grid(row=row, column=0, sticky="w")
-        self.flat_share_combo = ttk.Combobox(frame, values=["", "1 - только доли", "2 - без долей"], state="readonly")
-        self.flat_share_combo.grid(row=row, column=1, sticky="w")
-        ttk.Checkbutton(frame, text="Без апартаментов", variable=self.only_flat).grid(row=row, column=2, sticky="w")
-        ttk.Checkbutton(frame, text="Только апартаменты", variable=self.only_apartment).grid(row=row, column=3, sticky="w")
-
-        row += 1
-        ttk.Label(frame, text="Сортировка:").grid(row=row, column=0, sticky="w")
-        self.sort_by_combo = ttk.Combobox(frame, values=sort_by_options, state="readonly")
-        self.sort_by_combo.grid(row=row, column=1, sticky="w")
-
-        row += 1
-        ttk.Button(frame, text="Запустить парсинг", command=self.run_parser).grid(row=row, column=0, columnspan=2, pady=10)
-
-        frame.pack(fill="x", padx=10, pady=5)
-
-    def show_group(self):
-        frame = self.frame_group
-        for widget in frame.winfo_children():
-            widget.destroy()
-
-        ttk.Label(frame, text="Выберите файл для анализа (.xlsx):").grid(row=0, column=0, sticky="w")
-        ttk.Entry(frame, textvariable=self.selected_file, width=40, state="readonly").grid(row=0, column=1, sticky="w")
-        ttk.Button(frame, text="Обзор...", command=self.select_file).grid(row=0, column=2, padx=5)
-
-        ttk.Label(frame, text="Фильтр по улицам (через запятую):").grid(row=1, column=0, sticky="w")
-        ttk.Entry(frame, textvariable=self.filter_streets, width=40).grid(row=1, column=1, sticky="w")
-
-        ttk.Button(frame, text="Запустить группировку", command=self.run_grouping).grid(row=2, column=0, columnspan=2, pady=10)
-
-        frame.pack(fill="x", padx=10, pady=5)
-
-    def show_search(self):
-        frame = self.frame_search
-        for widget in frame.winfo_children():
-            widget.destroy()
-
-        ttk.Label(frame, text="Город поиска:").grid(row=0, column=0, sticky="w")
-        ttk.Entry(frame, textvariable=self.city_var, width=30).grid(row=0, column=1, sticky="w")
-
-        ttk.Label(frame, text="ЖК для поиска (через запятую):").grid(row=1, column=0, sticky="w")
-        ttk.Entry(frame, textvariable=self.search_jk_var, width=50).grid(row=1, column=1, sticky="w")
-
-        ttk.Button(frame, text="Запустить поиск", command=self.run_search).grid(row=2, column=0, columnspan=2, pady=10)
-
-        frame.pack(fill="x", padx=10, pady=5)
-
-    def select_file(self):
-        file = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
-        if file:
-            self.selected_file.set(file)
-
-    def run_parser(self):
-        if self.search_type.get() == "new":
+        def wrapper():
             try:
-                parser.new_dev()
-                messagebox.showinfo("Парсинг завершен", "Парсинг новостроек завершен. Результат сохранен в папке result.")
-            except Exception as e:
-                messagebox.showerror("Ошибка", f"Ошибка при парсинге новостроек:\n{e}")
-        else:
-            params = {
-                "object_type": self.object_type_entry.get(),
-                "start_page": int(self.start_page_entry.get()),
-                "end_page": int(self.end_page_entry.get()),
-                "is_by_homeowner": self.only_homeowner.get(),
-                "min_price": int(self.min_price_entry.get()),
-                "max_price": int(self.max_price_entry.get()),
-                "min_balconies": self.min_balconies_entry.get() or None,
-                "have_loggia": self.have_loggia.get(),
-                "min_house_year": self.min_house_year_entry.get() or None,
-                "max_house_year": self.max_house_year_entry.get() or None,
-                "min_floor": self.min_floor_entry.get() or None,
-                "max_floor": self.max_floor_entry.get() or None,
-                "min_total_floor": self.min_total_floor_entry.get() or None,
-                "max_total_floor": self.max_total_floor_entry.get() or None,
-                "house_material_type": self.house_material_combo.get(),
-                "district": self.district_combo.get(),
-                "metro": None,
-                "metro_station": self.metro_station_entry.get(),
-                "metro_foot_minute": self.metro_foot_minute_entry.get() or None,
-                "flat_share": self.flat_share_combo.get(),
-                "only_flat": self.only_flat.get(),
-                "only_apartment": self.only_apartment.get(),
-                "sort_by": self.sort_by_combo.get()
-            }
+                func(*args)
+            finally:
+                self.stop_button.config(state=tk.DISABLED)
+                self.status_label.config(text="Готово или остановлено")
+
+        thread = threading.Thread(target=wrapper)
+        thread.start()
+
+    def stop_task(self):
+        if self.stop_event:
+            self.stop_event.set()
+            print("Пользователь нажал 'СТОП'. Завершение операции...")
+
+    def run_new_dev(self):
+        print("Запущен парсинг новостроек...")
+        self.run_in_thread(new_dev, self.stop_event)
+
+    def open_flat_search_form(self):
+        form_window = tk.Toplevel(self.root)
+        form_window.title("Параметры поиска квартир")
+        form_window.geometry("400x500")
+
+        # Словарь районов
+        disct = {
+            "Октябрьский": 215,
+            "Кировский": 213,
+            "Дзержинский": 209,
+            "Железнодорожный": 210,
+            "Заельцовский": 211,
+            "Ленинский": 214
+        }
+
+        # Поля ввода
+        tk.Label(form_window, text="Количество комнат").pack()
+        rooms_entry = ttk.Combobox(form_window, values=["all", "1", "2", "3", "4"])
+        rooms_entry.set("all")
+        rooms_entry.pack(pady=5)
+
+        tk.Label(form_window, text="Только квартиры (True/False)").pack()
+        only_flat_entry = ttk.Combobox(form_window, values=["True", "False"])
+        only_flat_entry.set("True")
+        only_flat_entry.pack(pady=5)
+
+        tk.Label(form_window, text="Апартаменты (True/False)").pack()
+        apartments_entry = ttk.Combobox(form_window, values=["True", "False"])
+        apartments_entry.set("False")
+        apartments_entry.pack(pady=5)
+
+        tk.Label(form_window, text="Минимальный год постройки").pack()
+        year_entry = tk.Entry(form_window)
+        year_entry.insert(0, "2024")
+        year_entry.pack(pady=5)
+
+        tk.Label(form_window, text="Первая страница поиска").pack()
+        start_page_entry = tk.Entry(form_window)
+        start_page_entry.insert(0, "1")
+        start_page_entry.pack(pady=5)
+
+        tk.Label(form_window, text="Последняя страница поиска").pack()
+        end_page_entry = tk.Entry(form_window)
+        end_page_entry.insert(0, "20")
+        end_page_entry.pack(pady=5)
+
+        tk.Label(form_window, text="Минимальная цена").pack()
+        min_price_entry = tk.Entry(form_window)
+        min_price_entry.insert(0, "0")
+        min_price_entry.pack(pady=5)
+
+        tk.Label(form_window, text="Максимальная цена").pack()
+        max_price_entry = tk.Entry(form_window)
+        max_price_entry.insert(0, "30000000")
+        max_price_entry.pack(pady=5)
+
+        tk.Label(form_window, text="Район (выберите из списка)").pack()
+        district_combo = ttk.Combobox(form_window, values=list(disct.keys()))
+        district_combo.set("Октябрьский")
+        district_combo.pack(pady=5)
+
+        def submit():
             try:
-                result_file = parser.all_flar_search_gui(params)
-                messagebox.showinfo("Парсинг завершен", f"Результат сохранен: {result_file}")
+                district_name = district_combo.get()
+                district_id = disct.get(district_name, None)
+
+                params = {
+                    "rooms": rooms_entry.get(),
+                    "only_flat": eval(only_flat_entry.get()),
+                    "only_apartment": eval(apartments_entry.get()),
+                    "min_house_year": int(year_entry.get()),
+                    "start_page": int(start_page_entry.get()),
+                    "end_page": int(end_page_entry.get()),
+                    "min_price": int(min_price_entry.get()),
+                    "max_price": int(max_price_entry.get()),
+                    "district": district_id,
+                    "object_type": "secondary",
+                    "house_material_type": None,
+                    "metro": None,
+                    "metro_station": None,
+                    "metro_foot_minute": None,
+                    "is_by_homeowner": None,
+                    "flat_share": None,
+                    "sort_by": None
+                }
+
+                print(f"Запуск поиска квартир с параметрами: {params}")
+                self.run_in_thread(all_flar_search_gui, params)
+                form_window.destroy()
             except Exception as e:
-                messagebox.showerror("Ошибка", f"Ошибка при парсинге:\n{e}")
+                messagebox.showerror("Ошибка ввода", f"Неверные данные:\n{e}")
 
-    def run_grouping(self):
-        if not self.selected_file.get():
-            messagebox.showerror("Ошибка", "Выберите файл для анализа!")
-            return
-        try:
-            result_file = sorting.sorting(file_path=self.selected_file.get(), filter_streets=self.filter_streets.get())
-            messagebox.showinfo("Группировка завершена", f"Результат сохранен: {result_file}")
-        except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при группировке:\n{e}")
+        tk.Button(form_window, text="Запустить поиск", command=submit).pack(pady=10)
 
-    def run_search(self):
-        city = self.city_var.get()
-        developers = [jk.strip() for jk in self.search_jk_var.get().split(",") if jk.strip()]
+    def open_sorting_form(self):
+        form_window = tk.Toplevel(self.root)
+        form_window.title("Параметры анализа данных")
+        form_window.geometry("400x300")
+
+        tk.Label(form_window, text="Выберите файл Excel из ./result").pack()
+        file_var = tk.StringVar()
+        file_combo = ttk.Combobox(form_window, textvariable=file_var)
         try:
-            search.main(city=city, developers=developers)
-            messagebox.showinfo("Поиск завершен", "Поиск маркетинговых активностей завершен.")
-        except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при поиске:\n{e}")
+            file_combo['values'] = [f for f in os.listdir("./result") if f.endswith(".xlsx")]
+        except FileNotFoundError:
+            file_combo['values'] = []
+        file_combo.pack(pady=5)
+
+        tk.Label(form_window, text="Застройщики (через запятую)").pack()
+        dev_entry = tk.Entry(form_window)
+        dev_entry.pack(pady=5)
+
+        tk.Label(form_window, text="Количество комнат для сравнения").pack()
+        room_entry = tk.Entry(form_window)
+        room_entry.insert(0, "2")
+        room_entry.pack(pady=5)
+
+        def submit():
+            selected_file = file_var.get()
+            devs = dev_entry.get()
+            room = room_entry.get()
+            if not selected_file:
+                messagebox.showwarning("Файл не выбран", "Выберите файл Excel.")
+                return
+            if not devs:
+                messagebox.showwarning("Нет застройщиков", "Введите хотя бы одного застройщика.")
+                return
+
+            print(f"Запуск анализа данных из файла: {selected_file}, застройщики: {devs}")
+            self.run_in_thread(sorting, file_path=f"./result/{selected_file}", filter_streets=devs)
+            form_window.destroy()
+
+        tk.Button(form_window, text="Запустить анализ", command=submit).pack(pady=10)
+
+    def open_marketing_form(self):
+        form_window = tk.Toplevel(self.root)
+        form_window.title("Поиск маркетинговых акций")
+        form_window.geometry("400x300")
+
+        tk.Label(form_window, text="Город поиска (например, Новосибирск)").pack()
+        city_entry = tk.Entry(form_window)
+        city_entry.insert(0, "Новосибирск")
+        city_entry.pack(pady=5)
+
+        tk.Label(form_window, text="Список застройщиков / ЖК (через запятую)").pack()
+        devs_entry = tk.Entry(form_window)
+        devs_entry.insert(0, "Ясный берег, Академ Riverside")
+        devs_entry.pack(pady=5)
+
+        def submit():
+            city = city_entry.get().strip()
+            devs = [d.strip() for d in devs_entry.get().split(",") if d.strip()]
+            if not devs:
+                devs = None
+
+            print(f"Запуск поиска маркетинговых акций для города: {city}, застройщиков: {devs}")
+            self.run_in_thread(lambda:  searchhh(city=city, developers=devs))
+            form_window.destroy()
+
+        tk.Button(form_window, text="Запустить поиск", command=submit).pack(pady=10)
+
+    def run_sorting(self):
+        self.status_label.config(text="Выполняется: Анализ данных...")
+        self.run_in_thread(sorting)
+        self.status_label.config(text="Готово: Анализ завершён.")
+
+    def run_marketing(self):
+        city = "Новосибирск"
+        developers = ["Ясный берег", "Академ Riverside"]
+        self.status_label.config(text=f"Выполняется: Поиск активностей для {city}...")
+        self.run_in_thread(lambda:  searchhh(city=city, developers=developers))
+        self.status_label.config(text="Готово: Результаты в Excel файле.")
 
 if __name__ == "__main__":
-    app = RealtyParserGUI()
-    app.mainloop()
+    root = tk.Tk()
+    app = ParserGUI(root)
+    root.mainloop()

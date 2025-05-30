@@ -1,0 +1,8 @@
+*.csv
+
+/date
+/date
+/result
+/distr
+*.xlsx
+*.txt

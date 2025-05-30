@@ -26,6 +26,8 @@ def mysearch():
     print(nsk_parser.final_url)  # Здесь будет финальный URL
 
 def all_flat_search_gui(params):
+    print('Приступаю к парсингу по заданным параметрам')
+
     current_date_str = datetime.now().strftime('%Y-%m-%d-%M-%H')
     nsk_parser = cianparser.CianParser(location="Новосибирск")
     data = nsk_parser.get_flats(
@@ -144,9 +146,10 @@ def all_flar_search():
                                                                 "max_price": Search_value_default['Максимальная цена'] , 
                                                                 "district" : Search_value_default['Район']} ,  with_extra_data=True)
 
-     #преобразовываем в excel и сохраняем всю информацию
+    print('Преобразовываем в excel и сохраняем всю информацию')
     df=pd.DataFrame(data)
     df.to_excel(f"./result/all_flat_result{current_date_str}.xlsx") 
+    print(f'Данные сохранены в файл /result/all_flat_result{current_date_str}.xlsx')
 
     #расчёт цены квадратного метра и поиск уникальных значений для каждого застройщика
     df['price_metr']=(df['price'].astype(int) / df['total_meters'].astype(int)) 

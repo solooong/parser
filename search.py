@@ -50,7 +50,7 @@ def take_screenshot(url, filename):
     finally:
         driver.quit()
 
-def main(city=None, developers=None):
+def searchhh(city=None, developers=None):
     """
     city: строка с названием города (например, "Новосибирск")
     developers: список ЖК/застройщиков для поиска (например, ["Ясный берег", "Академ Riverside"])
@@ -74,7 +74,7 @@ def main(city=None, developers=None):
     os.makedirs('./result', exist_ok=True)
     excel_file = f"./result/Result_{current_date_str}.xlsx"
     processed_urls = {}
-
+    print('Получены данные. Приступаем к поиску')
     for developer in developers:
         processed_urls[developer] = set()
         search_queries = [f"{developer} {keyword}" for keyword in keywords]
@@ -95,11 +95,12 @@ def main(city=None, developers=None):
                 if not found_keywords:
                     continue
 
-                # Скриншот
+                print('Делаем скриншот найденного результата') 
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 screenshot_name = f"./result/{developer.replace(' ', '_')}_{timestamp}.png"
                 try:
                     take_screenshot(url, screenshot_name)
+                    print(f'Найден сайт и сделан скриншот. Файл сохранён result/{developer}{city}_{timestamp}')
                 except Exception as e:
                     print(f"Скриншот не создан для {url}: {e}")
 
@@ -121,6 +122,3 @@ def main(city=None, developers=None):
 
     return excel_file if results else None
 
-# Для запуска из консоли
-if __name__ == "__main__":
-    main()
